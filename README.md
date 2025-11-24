@@ -5,16 +5,18 @@ A Tabular Editor macro that exports all DAX measures and calculated columns from
 ## Features
 
 - **Complete DAX Inventory**: Exports all measures and calculated columns with expressions, descriptions, and metadata
-- **Folder Structure Mapping**: Captures complete folder hierarchy and organization for both measures and columns
-- **Dependency Mapping**: Shows which measures reference other measures for impact analysis
-- **Complexity Analysis**: Automatically categorizes measures from Simple to Very Complex
-- **Clean JSON Output**: Properly formatted, parseable JSON without escaping issues
+- **Folder Structure Mapping**: Captures complete folder hierarchy with depth tracking for both measures and columns
+- **Dependency Mapping**: Uses built-in dependency tracking to show which measures reference other measures
+- **Complexity Analysis**: Automatically categorizes measures from Simple to Very Complex based on dependencies
+- **Rich Metadata**: Captures data types, format strings, data categories, and sort columns
+- **Clean JSON Output**: Properly formatted, parseable JSON with nested structure
 - **Universal Compatibility**: Cross-platform file paths work on Windows, Mac, and Linux
-- **Professional Documentation**: Ready-to-use output for technical documentation
+- **Configurable Export**: Control what gets exported (measures, columns, hidden objects)
+- **Professional Documentation**: Ready-to-use output for technical documentation and analysis
 
 ## Requirements
 
-- **Tabular Editor** (any version with C# scripting support)
+- **Tabular Editor** (version with C# scripting support)
 - **Power BI Model** (.pbix, .pbit, or Analysis Services connection)
 
 ## Installation
@@ -42,193 +44,224 @@ A Tabular Editor macro that exports all DAX measures and calculated columns from
 
 1. **Open your Power BI model** in Tabular Editor
 2. **Run the macro** using either method above (no path configuration needed)
-3. **Find your JSON file** in your Downloads folder as `DAX_Measures_Clean.json`
+3. **Find your JSON file** in your Downloads folder as `DAX_Export.json`
 
 ### Customization
 
-```csharp
-// Output automatically goes to Downloads folder - cross-platform compatible
-var outputPath = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "Downloads", "DAX_Measures_Clean.json");
+Configure the export at the top of the script:
 
-// Modify complexity thresholds (for measures)
-if (refCount > 0) complexity = "Medium";        // 1+ dependencies = Medium
-if (refCount > 2) complexity = "Complex";       // 3+ dependencies = Complex  
-if (refCount > 5) complexity = "Very Complex";  // 6+ dependencies = Very Complex
+```csharp
+// Configuration - Easy to modify
+var outputFileName = "DAX_Export.json";
+var outputFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+var includeMeasures = true;              // Set to false to skip measures
+var includeCalculatedColumns = true;     // Set to false to skip calculated columns
+var includeHiddenObjects = true;         // Set to false to exclude hidden objects
+var complexityMedium = 1;                // 1+ dependencies = Medium
+var complexityComplex = 3;               // 3+ dependencies = Complex
+var complexityVeryComplex = 6;           // 6+ dependencies = Very Complex
 ```
 
 ## Output Format
 
-The macro generates a JSON file with the following structure:
+The macro generates a structured JSON file with nested objects for better organization:
 
 ```json
 {
-  "exportDate": "2025-08-19 11:08:30",
-  "totalMeasures": 56,
-  "totalCalculatedColumns": 13,
-  "measures": [
-    {
-      "name": "Total_Revenue",
-      "table": "Sales",
-      "expression": "SUM(Sales[Amount])",
-      "description": "Total sales revenue",
-      "folder": "00 Base Calculations",
-      "subfolder": "Revenue Metrics",
-      "fullFolderPath": "00 Base Calculations\\Revenue Metrics",
-      "complexity": "Simple",
-      "directDependencies": 0,
-      "isHidden": false,
-      "referencedMeasures": []
-    },
-    {
-      "name": "Revenue_Growth",
-      "table": "Sales", 
-      "expression": "DIVIDE([Total_Revenue] - [Previous_Revenue], [Previous_Revenue])",
-      "description": "YoY revenue growth percentage",
-      "folder": "01 KPIs",
-      "subfolder": "",
-      "fullFolderPath": "01 KPIs",
-      "complexity": "Medium",
-      "directDependencies": 2,
-      "isHidden": false,
-      "referencedMeasures": ["Total_Revenue", "Previous_Revenue"]
-    }
-  ],
-  "calculatedColumns": [
-    {
-      "name": "YoY_Growth_Rate",
-      "table": "Sales",
-      "description": "Year-over-year growth calculation",
-      "dataType": "Double",
-      "folder": "Growth Metrics",
-      "subfolder": "",
-      "fullFolderPath": "Growth Metrics",
-      "isHidden": false,
-      "formatString": "0.00%"
-    },
-    {
-      "name": "Month",
-      "table": "DateTable",
-      "description": "",
-      "dataType": "String",
-      "folder": "",
-      "subfolder": "",
-      "fullFolderPath": "",
-      "isHidden": true,
-      "formatString": ""
-    }
-  ]
+  "exportDate": "2025-11-24 11:10:32",
+  "modelName": "Sales Analytics Model",
+  "exportConfiguration": {
+    "includedMeasures": true,
+    "includedCalculatedColumns": true,
+    "includedHiddenObjects": true
+  },
+  "measures": {
+    "count": 56,
+    "items": [
+      {
+        "name": "Total_Revenue",
+        "table": "Sales",
+        "expression": "SUM(Sales[Amount])",
+        "description": "Total sales revenue",
+        "dataType": "Currency",
+        "formatString": "$#,0.00",
+        "folder": {
+          "main": "01 - Base Metrics",
+          "sub": "Revenue",
+          "full": "01 - Base Metrics/Revenue",
+          "depth": 2
+        },
+        "complexity": {
+          "level": "Simple",
+          "directDependencies": 0,
+          "referencedMeasures": []
+        },
+        "metadata": {
+          "isHidden": false,
+          "displayFolder": "01 - Base Metrics/Revenue",
+          "dataCategory": ""
+        }
+      },
+      {
+        "name": "Revenue_Growth",
+        "table": "Sales",
+        "expression": "DIVIDE([Total_Revenue] - [Previous_Revenue], [Previous_Revenue])",
+        "description": "YoY revenue growth percentage",
+        "dataType": "Double",
+        "formatString": "0.00%",
+        "folder": {
+          "main": "02 - KPIs",
+          "sub": "Growth Metrics",
+          "full": "02 - KPIs/Growth Metrics",
+          "depth": 2
+        },
+        "complexity": {
+          "level": "Medium",
+          "directDependencies": 2,
+          "referencedMeasures": ["Total_Revenue", "Previous_Revenue"]
+        },
+        "metadata": {
+          "isHidden": false,
+          "displayFolder": "02 - KPIs/Growth Metrics",
+          "dataCategory": ""
+        }
+      }
+    ]
+  },
+  "calculatedColumns": {
+    "count": 13,
+    "items": [
+      {
+        "name": "YoY_Growth_Rate",
+        "table": "Sales",
+        "description": "Year-over-year growth calculation",
+        "dataType": "Double",
+        "formatString": "0.00%",
+        "folder": {
+          "main": "Growth Metrics",
+          "sub": "",
+          "full": "Growth Metrics",
+          "depth": 1
+        },
+        "metadata": {
+          "isHidden": false,
+          "displayFolder": "Growth Metrics",
+          "dataCategory": "",
+          "sortByColumn": ""
+        }
+      },
+      {
+        "name": "Month",
+        "table": "DateTable",
+        "description": "",
+        "dataType": "String",
+        "formatString": "",
+        "folder": {
+          "main": "",
+          "sub": "",
+          "full": "",
+          "depth": 0
+        },
+        "metadata": {
+          "isHidden": true,
+          "displayFolder": "",
+          "dataCategory": "Months",
+          "sortByColumn": "MonthNo"
+        }
+      }
+    ]
+  }
 }
 ```
 
-## New Features in Latest Version
+## Key Features
 
-### Calculated Columns Support
+### Enhanced Metadata Capture
 
-The macro now exports calculated columns alongside measures:
+**For Measures:**
+- DAX expressions with dependencies
+- Data types (Currency, Double, Int64, DateTime, etc.)
+- Format strings (number and date formatting)
+- Folder organization with depth tracking
+- Complexity classification with dependency counts
+- Referenced measures list
+- Visibility and data category information
 
-- **Data Types**: Captures column data types (String, Double, Int64, DateTime, etc.)
-- **Format Strings**: Documents number and date formatting
-- **Folder Organization**: Same folder structure tracking as measures
-- **Visibility Settings**: Hidden column identification
-- **Complete Inventory**: Both custom and auto-generated columns
+**For Calculated Columns:**
+- Data types and format strings
+- Folder organization with depth tracking
+- Sort column relationships
+- Data categories (Months, Years, QuarterOfYear, etc.)
+- Visibility settings
+- Table context
 
-### Cross-Platform Compatibility
+### Improved JSON Structure
 
-- **Universal File Paths**: Automatically saves to Downloads folder on any OS
-- **Windows**: `C:\Users\[username]\Downloads\DAX_Measures_Clean.json`
-- **Mac**: `/Users/[username]/Downloads/DAX_Measures_Clean.json`
-- **Linux**: `/home/[username]/Downloads/DAX_Measures_Clean.json`
+- **Nested Objects**: Organized into logical sections (folder, complexity, metadata)
+- **Count Fields**: Quick access to totals without parsing arrays
+- **Export Configuration**: Documents what was included in the export
+- **Model Identification**: Captures model name for multi-model environments
+- **Depth Tracking**: Shows folder nesting level for organizational analysis
 
-## Folder Structure Features
+### Folder Structure Features
 
-### Folder Organization Tracking
+The macro captures complete folder hierarchy information with enhanced tracking:
 
-The macro captures complete folder hierarchy information for both measures and calculated columns:
+- **`main`**: Top-level folder name (e.g., "01 - Base Metrics")
+- **`sub`**: First subfolder level (e.g., "Revenue")
+- **`full`**: Complete folder path (e.g., "01 - Base Metrics/Revenue")
+- **`depth`**: Number of folder levels (0 = root, 1 = one level, etc.)
 
-- **`folder`**: Main/top-level folder name (e.g., "00 Base Calculations")
-- **`subfolder`**: First subfolder level (e.g., "Revenue Metrics")
-- **`fullFolderPath`**: Complete folder path with backslash separators
+### Dependency Analysis
 
-### Folder-Based Analysis
+- **Accurate Tracking**: Uses Tabular Editor's built-in dependency system
+- **Foundation Measures**: Identifies measures with zero dependencies
+- **Derived Measures**: Shows complete dependency chain
+- **Impact Analysis**: Understand what breaks if you change a measure
+- **Complexity Scoring**: Automatic classification based on dependency count
 
-- **Organizational Insights**: Understand how DAX objects are grouped and categorized
-- **Architecture Mapping**: Visualize folder-based organization
-- **Impact by Category**: Analyze dependencies within and across folder structures
-- **Documentation by Function**: Generate reports organized by business function
+### Calculated Column Support
 
-### Example Folder Structures
-
-```
-00 Base Calculations
-├── Revenue Metrics
-├── Cost Calculations  
-└── Time Intelligence
-
-01 KPIs
-├── Financial KPIs
-└── Operational KPIs
-
-02 RDD PI
-├── Primary Calculations
-└── Alternative Methods
-
-03 RDD Department
-└── Aggregation Methods
-
-04 RDD Building
-└── Space Analytics
-
-05 Advanced Analytics
-├── Growth Metrics
-└── Efficiency Scores
-```
+- **Complete Inventory**: All calculated columns including auto-generated ones
+- **Data Type Distribution**: Understand column types across tables
+- **Format Consistency**: Document formatting patterns
+- **Sorting Relationships**: Capture sort column dependencies
+- **Data Categories**: Semantic information for date/time columns
 
 ## Analysis Features
 
 ### Measure Classification
 
-- **Simple**: No measure dependencies (foundation measures)
+- **Simple**: No measure dependencies (foundation/base measures)
 - **Medium**: 1-2 measure dependencies
 - **Complex**: 3-5 measure dependencies
 - **Very Complex**: 6+ measure dependencies
 
-### Calculated Column Analysis
+### Organizational Analysis
 
-- **Data Type Distribution**: Understanding column types across tables
-- **Format Consistency**: Identifying formatting patterns
-- **Folder Organization**: How columns are categorized
-- **Hidden vs Visible**: Column visibility analysis
+- **Folder Distribution**: See how DAX objects are organized
+- **Depth Analysis**: Identify deeply nested folder structures
+- **Cross-Folder Dependencies**: Track relationships across organizational boundaries
+- **Naming Conventions**: Analyze folder naming patterns
 
-### Dependency Analysis
+### Data Quality Insights
 
-- **Foundation Measures**: Building blocks with no dependencies
-- **Derived Measures**: Reference other measures in calculations
-- **Impact Mapping**: See what breaks if you change a measure
-- **Hierarchy Understanding**: Visualize your DAX architecture
-- **Cross-Folder Dependencies**: Track measure relationships across organizational boundaries
-
-### Metadata Capture
-
-- **Expressions**: Clean, readable DAX code (measures only)
-- **Descriptions**: Object documentation
-- **Table Context**: Source table for each object
-- **Folder Organization**: Complete hierarchy and categorization
-- **Hidden Status**: Visibility settings
-- **Data Types**: Column type information
-- **Format Strings**: Number and date formatting
-- **Export Timestamp**: When analysis was performed
+- **Hidden Object Tracking**: Identify hidden measures and columns
+- **Format String Consistency**: Review formatting standards
+- **Data Category Usage**: Understand semantic metadata application
+- **Sort Column Relationships**: Verify proper column sorting
 
 ## Use Cases
 
 - **Complete Model Documentation**: Generate technical documentation for all DAX objects
 - **Impact Analysis**: "What happens if I modify this measure?"
-- **Data Type Auditing**: Review calculated column types and formatting
-- **Architecture Planning**: Understand DAX object relationships and folder organization
+- **Architecture Planning**: Understand DAX object relationships and organization
 - **Knowledge Transfer**: Onboard new team members with complete DAX inventory
 - **Quality Assurance**: Find measures with excessive complexity
-- **Organizational Analysis**: Review folder structure and object categorization
-- **Cross-Team Collaboration**: Understand which teams own which DAX objects
+- **Organizational Review**: Analyze folder structure and categorization
 - **Model Optimization**: Identify redundant or inefficient calculated columns
+- **Data Governance**: Track data types, formats, and semantic categories
+- **Dependency Mapping**: Visualize measure relationships and complexity
 
 ## Integration Examples
 
@@ -236,118 +269,227 @@ The macro captures complete folder hierarchy information for both measures and c
 
 ```python
 import json
-with open('DAX_Measures_Clean.json', 'r') as f:
+from collections import Counter
+
+with open('DAX_Export.json', 'r', encoding='utf-8') as f:
     dax_data = json.load(f)
-    
-# Analyze measures
-complex_measures = [m for m in dax_data['measures'] 
-                   if m['complexity'] == 'Very Complex']
+
+# Access measures and columns
+measures = dax_data['measures']['items']
+calc_columns = dax_data['calculatedColumns']['items']
+
+print(f"Model: {dax_data['modelName']}")
+print(f"Export Date: {dax_data['exportDate']}")
+print(f"Total Measures: {dax_data['measures']['count']}")
+print(f"Total Calculated Columns: {dax_data['calculatedColumns']['count']}")
+
+# Analyze measure complexity
+complexity_dist = Counter([m['complexity']['level'] for m in measures])
+print(f"\nComplexity Distribution: {dict(complexity_dist)}")
+
+# Find most complex measures
+very_complex = [m for m in measures if m['complexity']['level'] == 'Very Complex']
+print(f"\nVery Complex Measures ({len(very_complex)}):")
+for m in very_complex:
+    deps = m['complexity']['directDependencies']
+    print(f"  - {m['name']}: {deps} dependencies")
 
 # Analyze calculated columns
-calc_columns = dax_data['calculatedColumns']
-data_type_distribution = {}
-for col in calc_columns:
-    dtype = col['dataType']
-    data_type_distribution[dtype] = data_type_distribution.get(dtype, 0) + 1
-
-# Find custom vs auto-generated columns
 custom_columns = [col for col in calc_columns 
                  if not col['table'].startswith('DateTableTemplate') 
                  and not col['table'].startswith('LocalDateTable')]
 
-# Analyze by folder
-from collections import Counter
-measure_folders = Counter([m['folder'] for m in dax_data['measures']])
-column_folders = Counter([col['folder'] for col in calc_columns if col['folder']])
+data_types = Counter([col['dataType'] for col in custom_columns])
+print(f"\nCustom Column Data Types: {dict(data_types)}")
 
-print(f"Total measures: {dax_data['totalMeasures']}")
-print(f"Total calculated columns: {dax_data['totalCalculatedColumns']}")
-print(f"Custom calculated columns: {len(custom_columns)}")
-print("Data type distribution:", data_type_distribution)
+# Folder depth analysis
+folder_depths = Counter([m['folder']['depth'] for m in measures])
+print(f"\nFolder Depth Distribution: {dict(folder_depths)}")
+
+# Find measures with specific folder patterns
+base_measures = [m for m in measures if 'Base' in m['folder']['main']]
+print(f"\nBase Measures: {len(base_measures)}")
+
+# Analyze dependencies
+no_deps = [m for m in measures if m['complexity']['directDependencies'] == 0]
+print(f"\nFoundation Measures (no dependencies): {len(no_deps)}")
 ```
 
 ### Power BI Import
 
 ```powerquery
-// Import measures
+// Import measures with full metadata
 let
-    Source = Json.Document(File.Contents("DAX_Measures_Clean.json")),
-    measures = Source[measures],
+    Source = Json.Document(File.Contents("DAX_Export.json")),
+    measures = Source[measures][items],
     MeasuresTable = Table.FromList(measures, Splitter.SplitByNothing()),
     ExpandedMeasures = Table.ExpandRecordColumn(MeasuresTable, "Column1", 
-        {"name", "table", "folder", "complexity", "directDependencies"})
+        {"name", "table", "expression", "description", "dataType", "formatString"}),
+    ExpandedFolder = Table.ExpandRecordColumn(ExpandedMeasures, "folder",
+        {"main", "sub", "full", "depth"},
+        {"folder_main", "folder_sub", "folder_full", "folder_depth"}),
+    ExpandedComplexity = Table.ExpandRecordColumn(ExpandedFolder, "complexity",
+        {"level", "directDependencies"},
+        {"complexity_level", "directDependencies"})
 in
-    ExpandedMeasures
+    ExpandedComplexity
 
 // Import calculated columns
 let
-    Source = Json.Document(File.Contents("DAX_Measures_Clean.json")),
-    columns = Source[calculatedColumns],
+    Source = Json.Document(File.Contents("DAX_Export.json")),
+    columns = Source[calculatedColumns][items],
     ColumnsTable = Table.FromList(columns, Splitter.SplitByNothing()),
     ExpandedColumns = Table.ExpandRecordColumn(ColumnsTable, "Column1", 
-        {"name", "table", "dataType", "folder", "isHidden", "formatString"})
+        {"name", "table", "dataType", "formatString"}),
+    ExpandedFolder = Table.ExpandRecordColumn(ExpandedColumns, "folder",
+        {"main", "full", "depth"},
+        {"folder_main", "folder_full", "folder_depth"}),
+    ExpandedMetadata = Table.ExpandRecordColumn(ExpandedFolder, "metadata",
+        {"isHidden", "dataCategory", "sortByColumn"},
+        {"isHidden", "dataCategory", "sortByColumn"})
 in
-    ExpandedColumns
+    ExpandedMetadata
 ```
 
-### Complete Model Analysis Dashboard
+### Network Visualization (Python + NetworkX)
 
-Create visualizations showing:
+```python
+import json
+import networkx as nx
+import matplotlib.pyplot as plt
 
-- **Object Distribution**: Measures vs calculated columns by folder
-- **Complexity Analysis**: Measure complexity across folders
-- **Data Type Analysis**: Column type distribution
-- **Cross-Folder Dependencies**: Dependency networks
-- **Hidden Object Analysis**: Visibility patterns
-- **Format String Consistency**: Formatting standards compliance
+with open('DAX_Export.json', 'r', encoding='utf-8') as f:
+    dax_data = json.load(f)
+
+# Create dependency graph
+G = nx.DiGraph()
+measures = dax_data['measures']['items']
+
+for measure in measures:
+    measure_name = measure['name']
+    G.add_node(measure_name, complexity=measure['complexity']['level'])
+
+    for dep in measure['complexity']['referencedMeasures']:
+        G.add_edge(dep, measure_name)
+
+# Visualize
+pos = nx.spring_layout(G)
+complexity_colors = {
+    'Simple': 'lightgreen',
+    'Medium': 'yellow',
+    'Complex': 'orange',
+    'Very Complex': 'red'
+}
+
+node_colors = [complexity_colors[G.nodes[node].get('complexity', 'Simple')]
+               for node in G.nodes()]
+
+plt.figure(figsize=(15, 10))
+nx.draw(G, pos, node_color=node_colors, with_labels=True,
+        node_size=1000, font_size=8, arrows=True)
+plt.title("DAX Measure Dependency Network")
+plt.show()
+```
 
 ## Technical Details
 
 - **Language**: C# script for Tabular Editor
 - **Dependencies**: None beyond standard Tabular Editor libraries
-- **Output**: UTF-8 encoded JSON file
+- **Output**: UTF-8 encoded JSON file with proper escaping
 - **Performance**: Processes hundreds of DAX objects in seconds
-- **Memory**: Minimal memory footprint
+- **Memory**: Minimal memory footprint with StringBuilder optimization
 - **Compatibility**: Works with all Power BI model versions
 - **Cross-Platform**: Universal file paths work on Windows, Mac, and Linux
 - **Folder Support**: Handles nested folder structures of any depth
+- **String Safety**: Proper JSON escaping for special characters
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **CS1061 Error**: Fixed in latest version - no longer attempts to access unsupported Expression property for calculated columns
-- **File Path Issues**: Resolved - now uses cross-platform compatible paths
-- **Permission Errors**: Verify write access to Downloads folder
-- **Empty Output**: Check that your model contains DAX measures or calculated columns
-- **Missing Folder Info**: Ensure objects are properly organized in folders within Power BI
+**"Cannot convert type" errors**
+- Fixed in latest version - uses string matching for dependencies instead of type casting
+
+**File path issues**
+- Script automatically uses cross-platform compatible Downloads folder
+- Verify write permissions to Downloads folder
+
+**Empty output**
+- Check that your model contains DAX measures or calculated columns
+- Verify configuration settings (`includeMeasures`, `includeCalculatedColumns`)
+
+**Missing folder information**
+- Ensure objects are properly organized in folders within Power BI
+- Empty folder fields indicate objects at root level
+
+**Hidden objects not showing**
+- Set `includeHiddenObjects = true` in configuration
+- By default, all objects including hidden ones are exported
+
+### File Locations
+
+The script automatically saves to your Downloads folder:
+
+- **Windows**: `C:\Users\[username]\Downloads\DAX_Export.json`
+- **Mac**: `/Users/[username]/Downloads/DAX_Export.json`
+- **Linux**: `/home/[username]/Downloads/DAX_Export.json`
 
 ### What's Exported
 
-- **Measures**: All measures with DAX expressions and dependency analysis
-- **Calculated Columns**: Custom and auto-generated columns with metadata
-- **Auto-Generated Columns**: Date table columns are included but clearly identifiable
-- **Hidden Objects**: Both visible and hidden objects are documented
+**Measures:**
+- Name, table, DAX expression
+- Data type and format string
+- Complete folder hierarchy with depth
+- Complexity classification
+- Direct dependency count
+- List of referenced measures
+- Visibility and data category
 
-### File Path Details
+**Calculated Columns:**
+- Name, table, description
+- Data type and format string
+- Complete folder hierarchy with depth
+- Sort column relationships
+- Visibility and data category
+- All columns including auto-generated date tables
 
-The script automatically saves to your Downloads folder regardless of operating system:
+### JSON Structure Notes
 
-```csharp
-// Cross-platform compatible path
-var outputPath = System.IO.Path.Combine(
-    System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), 
-    "Downloads", 
-    "DAX_Measures_Clean.json"
-);
-```
+- Nested objects provide logical grouping of related metadata
+- Forward slashes used in folder paths for cross-platform compatibility
+- Special characters properly escaped in JSON output
+- Empty strings indicate missing or not applicable values
+- Count fields provide quick access to totals
 
-### Folder Structure Notes
+## Changelog
 
-- Empty folder fields indicate objects at root level or no folder organization
-- Backslash separators used in `fullFolderPath` for consistency
-- Subfolder captures only first level - deeper nesting shown in `fullFolderPath`
-- Special characters in folder names are properly escaped in JSON output
+### Version 2.0 (Current)
+
+**Major Improvements:**
+- Restructured JSON with nested objects for better organization
+- Added count fields for measures and calculated columns
+- Implemented export configuration tracking
+- Enhanced folder structure with depth tracking
+- Added data types and format strings for measures
+- Improved metadata capture (data categories, sort columns)
+- Better dependency tracking using built-in DependsOn property
+- Cross-platform path compatibility with forward slashes
+- Proper JSON string escaping
+- Error handling with try-catch blocks
+
+**Breaking Changes:**
+- JSON structure changed from flat to nested format
+- Folder fields now in nested `folder` object
+- Complexity fields now in nested `complexity` object
+- Metadata now in nested `metadata` object
+- Output filename changed to `DAX_Export.json`
+
+### Version 1.0 (Original)
+
+- Initial release with basic measure and calculated column export
+- Simple dependency tracking via string matching
+- Flat JSON structure
+- Basic folder organization tracking
 
 ## License
 

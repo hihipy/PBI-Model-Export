@@ -1,118 +1,225 @@
 using System.IO;
-var outputPath = System.IO.Path.Combine(System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile), "Downloads", "DAX_Measures_Clean.json");
-var lines = new List<string>();
-lines.Add("{");
-lines.Add("  \"exportDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",");
-lines.Add("  \"totalMeasures\": " + Model.AllMeasures.Count() + ",");
+using System.Text;
 
-// Count calculated columns
-var calculatedColumnsCount = 0;
-foreach (var table in Model.Tables)
-{
-    calculatedColumnsCount += table.Columns.Where(c => c.Type == ColumnType.Calculated).Count();
-}
-lines.Add("  \"totalCalculatedColumns\": " + calculatedColumnsCount + ",");
+// Configuration - Easy to modify
+var outputFileName = "DAX_Export.json";
+var outputFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+var includeMeasures = true;
+var includeCalculatedColumns = true;
+var includeHiddenObjects = true;
+var complexityMedium = 1;
+var complexityComplex = 3;
+var complexityVeryComplex = 6;
 
-lines.Add("  \"measures\": [");
-var measureCount = 0;
-foreach (var m in Model.AllMeasures)
+try
 {
-    if (measureCount > 0) lines.Add(",");
-    // Count referenced measures
-    var refCount = 0;
-    var refMeasureNames = new List<string>();
-    foreach (var otherMeasure in Model.AllMeasures)
+    var sb = new StringBuilder();
+
+    sb.AppendLine("{");
+    sb.AppendLine("  \"exportDate\": \"" + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + "\",");
+    sb.AppendLine("  \"modelName\": \"" + Model.Database.Name.Replace("\"", "'").Replace("\\", "/") + "\",");
+    sb.AppendLine("  \"exportConfiguration\": {");
+    sb.AppendLine("    \"includedMeasures\": " + includeMeasures.ToString().ToLower() + ",");
+    sb.AppendLine("    \"includedCalculatedColumns\": " + includeCalculatedColumns.ToString().ToLower() + ",");
+    sb.AppendLine("    \"includedHiddenObjects\": " + includeHiddenObjects.ToString().ToLower());
+    sb.AppendLine("  },");
+
+    var measureCount = 0;
+    var columnCount = 0;
+
+    // Export Measures
+    if (includeMeasures)
     {
-        if (m != otherMeasure && m.Expression.Contains("[" + otherMeasure.Name + "]"))
+        sb.AppendLine("  \"measures\": {");
+
+        var measuresList = new List<Measure>();
+        foreach (var measure in Model.AllMeasures)
         {
-            refCount++;
-            refMeasureNames.Add(otherMeasure.Name);
+            if (includeHiddenObjects || !measure.IsHidden)
+            {
+                measuresList.Add(measure);
+            }
         }
-    }
-    // Simple complexity
-    var complexity = "Simple";
-    if (refCount > 0) complexity = "Medium";
-    if (refCount > 2) complexity = "Complex";
-    if (refCount > 5) complexity = "Very Complex";
-    // Parse folder structure
-    var folderPath = m.DisplayFolder ?? "";
-    var folderParts = folderPath.Split('\\');
-    var mainFolder = folderParts.Length > 0 ? folderParts[0] : "";
-    var subFolder = folderParts.Length > 1 ? folderParts[1] : "";
-    var fullFolderPath = folderPath;
-    // Clean strings - just replace problematic characters
-    var cleanName = m.Name.Replace("\"", "'");
-    var cleanExpr = m.Expression.Replace("\"", "'").Replace("\n", " ").Replace("\r", "");
-    var cleanDesc = (m.Description ?? "").Replace("\"", "'");
-    var cleanMainFolder = mainFolder.Replace("\"", "'");
-    var cleanSubFolder = subFolder.Replace("\"", "'");
-    var cleanFullPath = fullFolderPath.Replace("\"", "'");
-    lines.Add("    {");
-    lines.Add("      \"name\": \"" + cleanName + "\",");
-    lines.Add("      \"table\": \"" + m.Table.Name + "\",");
-    lines.Add("      \"expression\": \"" + cleanExpr + "\",");
-    lines.Add("      \"description\": \"" + cleanDesc + "\",");
-    lines.Add("      \"folder\": \"" + cleanMainFolder + "\",");
-    lines.Add("      \"subfolder\": \"" + cleanSubFolder + "\",");
-    lines.Add("      \"fullFolderPath\": \"" + cleanFullPath + "\",");
-    lines.Add("      \"complexity\": \"" + complexity + "\",");
-    lines.Add("      \"directDependencies\": " + refCount + ",");
-    lines.Add("      \"isHidden\": " + m.IsHidden.ToString().ToLower() + ",");
-    lines.Add("      \"referencedMeasures\": [");
-    for (int i = 0; i < refMeasureNames.Count; i++)
-    {
-        lines.Add("        \"" + refMeasureNames[i] + "\"" + (i < refMeasureNames.Count - 1 ? "," : ""));
-    }
-    lines.Add("      ]");
-    lines.Add("    }");
-    measureCount++;
-}
-lines.Add("  ],");
+        measureCount = measuresList.Count;
 
-// Add calculated columns section
-lines.Add("  \"calculatedColumns\": [");
-var columnCount = 0;
-foreach (var table in Model.Tables)
+        sb.AppendLine("    \"count\": " + measureCount + ",");
+        sb.AppendLine("    \"items\": [");
+
+        for (int i = 0; i < measuresList.Count; i++)
+        {
+            var measure = measuresList[i];
+
+            // Get dependencies - use simple string matching since DependsOn might not work as expected
+            var dependencies = new List<string>();
+            var depCount = 0;
+            foreach (var otherMeasure in Model.AllMeasures)
+            {
+                if (measure != otherMeasure && measure.Expression.Contains("[" + otherMeasure.Name + "]"))
+                {
+                    dependencies.Add(otherMeasure.Name);
+                    depCount++;
+                }
+            }
+
+            var complexity = "Simple";
+            if (depCount >= complexityVeryComplex)
+                complexity = "Very Complex";
+            else if (depCount >= complexityComplex)
+                complexity = "Complex";
+            else if (depCount >= complexityMedium)
+                complexity = "Medium";
+
+            // Parse folder structure
+            var folderPath = measure.DisplayFolder ?? "";
+            var folderParts = folderPath.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var mainFolder = folderParts.Length > 0 ? folderParts[0] : "";
+            var subFolder = folderParts.Length > 1 ? folderParts[1] : "";
+
+            // Clean strings
+            var cleanName = measure.Name.Replace("\"", "'").Replace("\\", "/").Replace("\n", " ").Replace("\r", "");
+            var cleanTable = measure.Table.Name.Replace("\"", "'").Replace("\\", "/");
+            var cleanExpr = measure.Expression.Replace("\"", "'").Replace("\\", "/").Replace("\n", " ").Replace("\r", "");
+            var cleanDesc = (measure.Description ?? "").Replace("\"", "'").Replace("\\", "/").Replace("\n", " ").Replace("\r", "");
+            var cleanFormat = (measure.FormatString ?? "").Replace("\"", "'").Replace("\\", "/");
+            var cleanMainFolder = mainFolder.Replace("\"", "'").Replace("\\", "/");
+            var cleanSubFolder = subFolder.Replace("\"", "'").Replace("\\", "/");
+            var cleanFullPath = folderPath.Replace("\"", "'").Replace("\\", "/");
+            var cleanDataCat = (measure.DataCategory ?? "").Replace("\"", "'").Replace("\\", "/");
+            var cleanDispFolder = (measure.DisplayFolder ?? "").Replace("\"", "'").Replace("\\", "/");
+
+            sb.AppendLine("      {");
+            sb.AppendLine("        \"name\": \"" + cleanName + "\",");
+            sb.AppendLine("        \"table\": \"" + cleanTable + "\",");
+            sb.AppendLine("        \"expression\": \"" + cleanExpr + "\",");
+            sb.AppendLine("        \"description\": \"" + cleanDesc + "\",");
+            sb.AppendLine("        \"dataType\": \"" + measure.DataType.ToString() + "\",");
+            sb.AppendLine("        \"formatString\": \"" + cleanFormat + "\",");
+            sb.AppendLine("        \"folder\": {");
+            sb.AppendLine("          \"main\": \"" + cleanMainFolder + "\",");
+            sb.AppendLine("          \"sub\": \"" + cleanSubFolder + "\",");
+            sb.AppendLine("          \"full\": \"" + cleanFullPath + "\",");
+            sb.AppendLine("          \"depth\": " + folderParts.Length);
+            sb.AppendLine("        },");
+            sb.AppendLine("        \"complexity\": {");
+            sb.AppendLine("          \"level\": \"" + complexity + "\",");
+            sb.AppendLine("          \"directDependencies\": " + depCount + ",");
+            sb.Append("          \"referencedMeasures\": [");
+            for (int j = 0; j < dependencies.Count; j++)
+            {
+                var cleanDep = dependencies[j].Replace("\"", "'").Replace("\\", "/");
+                sb.Append("\"" + cleanDep + "\"");
+                if (j < dependencies.Count - 1) sb.Append(", ");
+            }
+            sb.AppendLine("]");
+            sb.AppendLine("        },");
+            sb.AppendLine("        \"metadata\": {");
+            sb.AppendLine("          \"isHidden\": " + measure.IsHidden.ToString().ToLower() + ",");
+            sb.AppendLine("          \"displayFolder\": \"" + cleanDispFolder + "\",");
+            sb.AppendLine("          \"dataCategory\": \"" + cleanDataCat + "\"");
+            sb.AppendLine("        }");
+            sb.Append("      }");
+            if (i < measuresList.Count - 1) sb.AppendLine(",");
+            else sb.AppendLine();
+        }
+
+        sb.Append("    ]");
+        sb.AppendLine();
+        sb.Append("  }");
+        if (includeCalculatedColumns) sb.AppendLine(",");
+        else sb.AppendLine();
+    }
+
+    // Export Calculated Columns
+    if (includeCalculatedColumns)
+    {
+        sb.AppendLine("  \"calculatedColumns\": {");
+
+        var columnsList = new List<Column>();
+        foreach (var table in Model.Tables)
+        {
+            foreach (var column in table.Columns)
+            {
+                if (column.Type == ColumnType.Calculated)
+                {
+                    if (includeHiddenObjects || !column.IsHidden)
+                    {
+                        columnsList.Add(column);
+                    }
+                }
+            }
+        }
+        columnCount = columnsList.Count;
+
+        sb.AppendLine("    \"count\": " + columnCount + ",");
+        sb.AppendLine("    \"items\": [");
+
+        for (int i = 0; i < columnsList.Count; i++)
+        {
+            var column = columnsList[i];
+
+            // Parse folder structure
+            var folderPath = column.DisplayFolder ?? "";
+            var folderParts = folderPath.Split(new char[] { '\\' }, StringSplitOptions.RemoveEmptyEntries);
+            var mainFolder = folderParts.Length > 0 ? folderParts[0] : "";
+            var subFolder = folderParts.Length > 1 ? folderParts[1] : "";
+
+            var sortByCol = column.SortByColumn != null ? column.SortByColumn.Name : "";
+
+            // Clean strings
+            var cleanName = column.Name.Replace("\"", "'").Replace("\\", "/").Replace("\n", " ").Replace("\r", "");
+            var cleanTable = column.Table.Name.Replace("\"", "'").Replace("\\", "/");
+            var cleanDesc = (column.Description ?? "").Replace("\"", "'").Replace("\\", "/").Replace("\n", " ").Replace("\r", "");
+            var cleanFormat = (column.FormatString ?? "").Replace("\"", "'").Replace("\\", "/");
+            var cleanMainFolder = mainFolder.Replace("\"", "'").Replace("\\", "/");
+            var cleanSubFolder = subFolder.Replace("\"", "'").Replace("\\", "/");
+            var cleanFullPath = folderPath.Replace("\"", "'").Replace("\\", "/");
+            var cleanDataCat = (column.DataCategory ?? "").Replace("\"", "'").Replace("\\", "/");
+            var cleanDispFolder = (column.DisplayFolder ?? "").Replace("\"", "'").Replace("\\", "/");
+            var cleanSortBy = sortByCol.Replace("\"", "'").Replace("\\", "/");
+
+            sb.AppendLine("      {");
+            sb.AppendLine("        \"name\": \"" + cleanName + "\",");
+            sb.AppendLine("        \"table\": \"" + cleanTable + "\",");
+            sb.AppendLine("        \"description\": \"" + cleanDesc + "\",");
+            sb.AppendLine("        \"dataType\": \"" + column.DataType.ToString() + "\",");
+            sb.AppendLine("        \"formatString\": \"" + cleanFormat + "\",");
+            sb.AppendLine("        \"folder\": {");
+            sb.AppendLine("          \"main\": \"" + cleanMainFolder + "\",");
+            sb.AppendLine("          \"sub\": \"" + cleanSubFolder + "\",");
+            sb.AppendLine("          \"full\": \"" + cleanFullPath + "\",");
+            sb.AppendLine("          \"depth\": " + folderParts.Length);
+            sb.AppendLine("        },");
+            sb.AppendLine("        \"metadata\": {");
+            sb.AppendLine("          \"isHidden\": " + column.IsHidden.ToString().ToLower() + ",");
+            sb.AppendLine("          \"displayFolder\": \"" + cleanDispFolder + "\",");
+            sb.AppendLine("          \"dataCategory\": \"" + cleanDataCat + "\",");
+            sb.AppendLine("          \"sortByColumn\": \"" + cleanSortBy + "\"");
+            sb.AppendLine("        }");
+            sb.Append("      }");
+            if (i < columnsList.Count - 1) sb.AppendLine(",");
+            else sb.AppendLine();
+        }
+
+        sb.AppendLine("    ]");
+        sb.AppendLine("  }");
+    }
+
+    sb.AppendLine("}");
+
+    // Write to file
+    var outputPath = Path.Combine(outputFolder, outputFileName);
+    File.WriteAllText(outputPath, sb.ToString(), Encoding.UTF8);
+
+    // Success message
+    Console.WriteLine("Export completed successfully!");
+    Console.WriteLine("  Model: " + Model.Database.Name);
+    Console.WriteLine("  Measures: " + measureCount.ToString());
+    Console.WriteLine("  Calculated Columns: " + columnCount.ToString());
+    Console.WriteLine("  Location: " + outputPath);
+}
+catch (Exception ex)
 {
-    foreach (var column in table.Columns.Where(c => c.Type == ColumnType.Calculated))
-    {
-        if (columnCount > 0) lines.Add(",");
-        
-        // Parse folder structure for columns (if they have display folders)
-        var columnFolderPath = column.DisplayFolder ?? "";
-        var columnFolderParts = columnFolderPath.Split('\\');
-        var columnMainFolder = columnFolderParts.Length > 0 ? columnFolderParts[0] : "";
-        var columnSubFolder = columnFolderParts.Length > 1 ? columnFolderParts[1] : "";
-        var columnFullFolderPath = columnFolderPath;
-        
-        // Clean strings for columns
-        var cleanColumnName = column.Name.Replace("\"", "'");
-        var cleanColumnDesc = (column.Description ?? "").Replace("\"", "'");
-        var cleanColumnMainFolder = columnMainFolder.Replace("\"", "'");
-        var cleanColumnSubFolder = columnSubFolder.Replace("\"", "'");
-        var cleanColumnFullPath = columnFullFolderPath.Replace("\"", "'");
-        
-        lines.Add("    {");
-        lines.Add("      \"name\": \"" + cleanColumnName + "\",");
-        lines.Add("      \"table\": \"" + table.Name + "\",");
-        lines.Add("      \"description\": \"" + cleanColumnDesc + "\",");
-        lines.Add("      \"dataType\": \"" + column.DataType + "\",");
-        lines.Add("      \"folder\": \"" + cleanColumnMainFolder + "\",");
-        lines.Add("      \"subfolder\": \"" + cleanColumnSubFolder + "\",");
-        lines.Add("      \"fullFolderPath\": \"" + cleanColumnFullPath + "\",");
-        lines.Add("      \"isHidden\": " + column.IsHidden.ToString().ToLower() + ",");
-        lines.Add("      \"formatString\": \"" + (column.FormatString ?? "").Replace("\"", "'") + "\"");
-        lines.Add("    }");
-        columnCount++;
-    }
+    Console.WriteLine("Export failed!");
+    Console.WriteLine("  Error: " + ex.Message);
+    Console.WriteLine("  Type: " + ex.GetType().Name);
 }
-lines.Add("  ]");
-
-lines.Add("}");
-File.WriteAllLines(outputPath, lines);
-Console.WriteLine("Exported " + Model.AllMeasures.Count() + " measures and " + calculatedColumnsCount + " calculated columns to: " + outputPath);
-Console.WriteLine("Added folder structure information:");
-Console.WriteLine("- folder: Main folder name");
-Console.WriteLine("- subfolder: First subfolder name");
-Console.WriteLine("- fullFolderPath: Complete folder path");
-Console.WriteLine("- Calculated columns include: name, table, expression, dataType, folders, and formatting info");
