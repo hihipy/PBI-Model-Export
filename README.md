@@ -1,6 +1,6 @@
 # Export-DAX-Lineage
 
-A Tabular Editor macro that exports all DAX measures and calculated columns from Power BI models to JSON with complete dependency mapping, complexity analysis, and folder organization tracking. Enables impact analysis, documentation automation, and DAX architecture understanding through clean, structured output.
+A Tabular Editor macro that exports all DAX measures and calculated columns from Power BI models to JSON with complete dependency mapping, complexity analysis, and folder organization tracking. Useful for impact analysis, documentation automation, and understanding DAX architecture.
 
 ## Features
 
@@ -12,7 +12,6 @@ A Tabular Editor macro that exports all DAX measures and calculated columns from
 - **Clean JSON Output**: Properly formatted, parseable JSON with nested structure
 - **Universal Compatibility**: Cross-platform file paths work on Windows, Mac, and Linux
 - **Configurable Export**: Control what gets exported (measures, columns, hidden objects)
-- **Professional Documentation**: Ready-to-use output for technical documentation and analysis
 
 ## Requirements
 
@@ -27,13 +26,13 @@ A Tabular Editor macro that exports all DAX measures and calculated columns from
 
    - Open Tabular Editor with your Power BI model
    - Go to **Advanced Scripting** tab
-   - Click **File** → **Open Script**
+   - Click **File > Open Script**
    - Select `Export-DAX-Lineage.csx`
    - Click **Run**
 
 3. Option 2 - Create Custom Action (Recommended):
 
-   - In Tabular Editor: **File** → **Preferences** → **Custom Actions**
+   - In Tabular Editor: **File > Preferences > Custom Actions**
    - Click **Add** and paste the code
    - Name: "Export DAX Lineage to JSON"
    - Now available via right-click context menu
@@ -176,7 +175,7 @@ The macro generates a structured JSON file with nested objects for better organi
 
 ## Key Features
 
-### Enhanced Metadata Capture
+### Metadata Capture
 
 **For Measures:**
 - DAX expressions with dependencies
@@ -195,7 +194,7 @@ The macro generates a structured JSON file with nested objects for better organi
 - Visibility settings
 - Table context
 
-### Improved JSON Structure
+### JSON Structure
 
 - **Nested Objects**: Organized into logical sections (folder, complexity, metadata)
 - **Count Fields**: Quick access to totals without parsing arrays
@@ -205,7 +204,7 @@ The macro generates a structured JSON file with nested objects for better organi
 
 ### Folder Structure Features
 
-The macro captures complete folder hierarchy information with enhanced tracking:
+The macro captures complete folder hierarchy information:
 
 - **`main`**: Top-level folder name (e.g., "01 - Base Metrics")
 - **`sub`**: First subfolder level (e.g., "Revenue")
@@ -253,8 +252,8 @@ The macro captures complete folder hierarchy information with enhanced tracking:
 
 ## Use Cases
 
-- **Complete Model Documentation**: Generate technical documentation for all DAX objects
-- **Impact Analysis**: "What happens if I modify this measure?"
+- **Model Documentation**: Generate technical documentation for all DAX objects
+- **Impact Analysis**: Understand what happens if you modify a measure
 - **Architecture Planning**: Understand DAX object relationships and organization
 - **Knowledge Transfer**: Onboard new team members with complete DAX inventory
 - **Quality Assurance**: Find measures with excessive complexity
@@ -408,23 +407,23 @@ plt.show()
 ### Common Issues
 
 **"Cannot convert type" errors**
-- Fixed in latest version - uses string matching for dependencies instead of type casting
+- Fixed in latest version. Uses string matching for dependencies instead of type casting.
 
 **File path issues**
-- Script automatically uses cross-platform compatible Downloads folder
-- Verify write permissions to Downloads folder
+- Script automatically uses cross-platform compatible Downloads folder.
+- Verify write permissions to Downloads folder.
 
 **Empty output**
-- Check that your model contains DAX measures or calculated columns
-- Verify configuration settings (`includeMeasures`, `includeCalculatedColumns`)
+- Check that your model contains DAX measures or calculated columns.
+- Verify configuration settings (`includeMeasures`, `includeCalculatedColumns`).
 
 **Missing folder information**
-- Ensure objects are properly organized in folders within Power BI
-- Empty folder fields indicate objects at root level
+- Ensure objects are properly organized in folders within Power BI.
+- Empty folder fields indicate objects at root level.
 
 **Hidden objects not showing**
-- Set `includeHiddenObjects = true` in configuration
-- By default, all objects including hidden ones are exported
+- Set `includeHiddenObjects = true` in configuration.
+- By default, all objects including hidden ones are exported.
 
 ### File Locations
 
@@ -493,4 +492,6 @@ The script automatically saves to your Downloads folder:
 
 ## License
 
-Export-DAX-Lineage © 2025 is licensed under [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/)
+Export-DAX-Lineage © 2025
+
+Distributed under the [Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International](https://creativecommons.org/licenses/by-nc-nd/4.0/) license.
