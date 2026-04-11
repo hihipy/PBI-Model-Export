@@ -19,7 +19,7 @@ Power BI models contain structure that's invisible outside of Power BI Desktop. 
 
 ## Installation
 
-1. Download `PBI_Model_Export.csx`
+1. Download `PBIModelExport.csx`
 2. Open your Power BI model in Tabular Editor 2
 3. Go to the **Advanced Scripting** tab
 4. **File → Open Script** → select the `.csx` file
