@@ -1,4 +1,4 @@
-# PBI-Model-Export
+# pbi-model-export
 
 A Tabular Editor 2 C# script that exports a complete Power BI model to a structured JSON file optimized for AI consumption — includes tables, columns, measures with full recursive DAX dependency chains, relationships with fact/dimension role hints, hierarchies, partitions, RLS roles, and a compact summary section with top-level KPI detection, display folder grouping, and auto-generated table flagging. Output file is named automatically from the Power BI Desktop window title.
 
