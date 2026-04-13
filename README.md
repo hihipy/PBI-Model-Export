@@ -39,7 +39,7 @@ Power BI models contain structure that's invisible outside of Power BI Desktop. 
 All options are at the top of the script:
 
 ```csharp
-var headRowCount            = 10;    // rows to sample per table
+var headRowCount            = 50;    // rows to sample per table
 var includeHiddenObjects    = true;  // include hidden tables/columns/measures
 var includePartitionSources = true;  // include M queries and DAX partition expressions
 var includeRoles            = true;  // include RLS role definitions
@@ -124,7 +124,7 @@ If the source folder can't be resolved, the `dataHead` entry returns an `error` 
     "includeHiddenObjects": true,
     "includePartitionSources": true,
     "includeRoles": true,
-    "headRowCount": 10
+    "headRowCount": 50
   },
   "tables": [ ... ],
   "relationships": [ ... ],

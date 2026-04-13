@@ -23,7 +23,7 @@ using System.Xml;
 // ----------------------------------------------------------------------------
 // Configuration
 // ----------------------------------------------------------------------------
-var headRowCount            = 10;    // rows to sample per table
+var headRowCount            = 50;    // rows to sample per table
 var includeHiddenObjects    = true;  // include hidden tables, columns, measures
 var includePartitionSources = true;  // include M expression source in output
 var includeRoles            = true;  // include RLS role definitions
